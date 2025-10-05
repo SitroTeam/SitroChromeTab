@@ -20,7 +20,6 @@ const WEATHER_API = 'https://api.weatherapi.com/v1/current.json';
 const LOGO_PLACEHOLDER = 'icons/icon128.png';
 let lastFetchTime = 0;
 const FETCH_INTERVAL = 30 * 1000;
-let updateCheckInterval;
 
 /* ======================== */
 /*      Utility Functions    */
@@ -53,8 +52,6 @@ function applyBackground(settings) {
     return;
   }
 
-  console.log('Applying background with settings:', settings.background);
-
   // ابتدا تمام استایل‌ها رو پاک می‌کنیم
   bgOverlay.style.backgroundImage = 'none';
   bgOverlay.style.backgroundColor = 'transparent';
@@ -66,14 +63,12 @@ function applyBackground(settings) {
     case 'upload':
       if (bgConfig.data) {
         bgOverlay.style.backgroundImage = `url("${bgConfig.data}")`;
-        console.log('Applied uploaded background image');
       }
       break;
 
     case 'url':
       if (bgConfig.data) {
         bgOverlay.style.backgroundImage = `url("${bgConfig.data}")`;
-        console.log('Applied URL background:', bgConfig.data);
       }
       break;
 
@@ -81,15 +76,12 @@ function applyBackground(settings) {
       if (bgConfig.data) {
         bgOverlay.style.backgroundColor = bgConfig.data;
         bgOverlay.style.filter = 'blur(0px)';
-        console.log('Applied color background:', bgConfig.data);
       }
       break;
 
     case 'default':
     default:
-      // استفاده از مسیر نسبی برای فایل پیش‌فرض
       bgOverlay.style.backgroundImage = 'url("./images/bg.jpg")';
-      console.log('Applied default background');
   }
 
   // اطمینان از تنظیمات نمایش
@@ -267,9 +259,10 @@ async function fetchCrypto(ids, vs_currency) {
   if (!ids.length) return {};
   try {
     const res = await fetch(`${COINGECKO_API}?ids=${ids.join(',')}&vs_currencies=${vs_currency.toLowerCase()}&include_24hr_change=true`);
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error('Failed to fetch crypto data');
     return await res.json();
-  } catch {
+  } catch (error) {
+    console.error('Error fetching crypto:', error);
     return {};
   }
 }
@@ -280,18 +273,23 @@ async function fetchCryptoLogos(ids) {
       cryptoLogos = cryptoLogos || {};
       const logos = { ...cryptoLogos };
       const idsToFetch = ids.filter(id => !logos[id]);
+      
       if (idsToFetch.length > 0) {
-        await Promise.all(idsToFetch.map(async id => {
-          try {
-            const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            logos[id] = data.image?.small || LOGO_PLACEHOLDER;
-          } catch {
-            logos[id] = LOGO_PLACEHOLDER;
-          }
-        }));
-        chrome.storage.local.set({ cryptoLogos: logos });
+        try {
+          await Promise.all(idsToFetch.map(async id => {
+            try {
+              const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
+              if (!res.ok) throw new Error();
+              const data = await res.json();
+              logos[id] = data.image?.small || LOGO_PLACEHOLDER;
+            } catch {
+              logos[id] = LOGO_PLACEHOLDER;
+            }
+          }));
+          chrome.storage.local.set({ cryptoLogos: logos });
+        } catch (error) {
+          console.error('Error fetching logos:', error);
+        }
       }
       resolve(logos);
     });
@@ -300,19 +298,85 @@ async function fetchCryptoLogos(ids) {
 
 async function fetchFiatRates(base, cryptoList = []) {
   if (base === 'IRR') {
-    return new Promise(resolve => {
-      chrome.runtime.sendMessage({ action: 'fetchBitpinTicker', cryptoList }, response => {
-        resolve(response?.data || { base: 'IRR', rates: {} });
-      });
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        console.log('Timeout reached for Bitpin API');
+        // فال‌بک مستقیم
+        fetchIRRFallback(cryptoList).then(resolve);
+      }, 10000);
+
+      try {
+        chrome.runtime.sendMessage({ action: 'fetchBitpinTicker', cryptoList }, (response) => {
+          clearTimeout(timeout);
+          
+          if (chrome.runtime.lastError) {
+            console.error('Chrome runtime error:', chrome.runtime.lastError.message);
+            fetchIRRFallback(cryptoList).then(resolve);
+            return;
+          }
+          
+          if (response && response.data) {
+            resolve(response.data);
+          } else {
+            console.error('Invalid response from Bitpin API');
+            fetchIRRFallback(cryptoList).then(resolve);
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        console.error('Error in fetchFiatRates:', error);
+        fetchIRRFallback(cryptoList).then(resolve);
+      }
     });
   } else {
     try {
       const res = await fetch(`${EXCHANGE_API}?base=${base.toUpperCase()}`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error('Failed to fetch fiat rates');
       return await res.json();
-    } catch {
+    } catch (error) {
+      console.error('Error fetching fiat rates:', error);
       return { rates: {} };
     }
+  }
+}
+
+// فال‌بک برای IRR
+async function fetchIRRFallback(cryptoList) {
+  try {
+    const res = await fetch(`${COINGECKO_API}?ids=${cryptoList.join(',')}&vs_currencies=usd&include_24hr_change=true`);
+    if (!res.ok) throw new Error('CoinGecko failed');
+    
+    const cryptoData = await res.json();
+    const rates = {};
+    const usdToIrr = 50000; // نرخ تقریبی
+
+    cryptoList.forEach(id => {
+      const usdPrice = cryptoData[id]?.usd;
+      if (usdPrice) {
+        rates[id.toLowerCase()] = {
+          price: Math.round(usdPrice * usdToIrr),
+          changePerc: cryptoData[id]?.usd_24h_change || 0
+        };
+      } else {
+        rates[id.toLowerCase()] = {
+          price: 0,
+          changePerc: 0
+        };
+      }
+    });
+
+    return { base: 'IRR', rates, ts: Date.now() };
+  } catch (error) {
+    console.error('IRR fallback also failed:', error);
+    // ایجاد داده‌های نمونه
+    const sampleRates = {};
+    cryptoList.forEach(id => {
+      sampleRates[id.toLowerCase()] = {
+        price: 0,
+        changePerc: 0
+      };
+    });
+    return { base: 'IRR', rates: sampleRates, ts: Date.now() };
   }
 }
 
@@ -320,9 +384,10 @@ async function fetchGoldPriceUSD(apiKey) {
   if (!apiKey) return null;
   try {
     const res = await fetch(`${METALS_API}?access_key=${apiKey}&symbols=XAU&base=USD`);
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error('Failed to fetch gold price');
     return await res.json();
-  } catch {
+  } catch (error) {
+    console.error('Error fetching gold price:', error);
     return null;
   }
 }
@@ -331,9 +396,10 @@ async function fetchWeatherData(city, apiKey) {
   if (!apiKey || !city) return null;
   try {
     const res = await fetch(`${WEATHER_API}?key=${apiKey}&q=${encodeURIComponent(city)}&lang=fa`);
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error('Failed to fetch weather data');
     return await res.json();
-  } catch {
+  } catch (error) {
+    console.error('Error fetching weather:', error);
     return null;
   }
 }
@@ -343,47 +409,67 @@ async function fetchWeatherData(city, apiKey) {
 /* ======================== */
 async function renderCryptoCards(cryptoData, fiatData, goldData, settings, ts) {
   const cards = document.getElementById('crypto-cards');
+  
+  // نمایش اسکلتون در حین لود
   cards.innerHTML = '';
-  const logos = await fetchCryptoLogos(settings.cryptoList);
-  const unit = settings.baseCurrency.toUpperCase();
+  for (let i = 0; i < settings.cryptoList.length; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton';
+    cards.appendChild(skeleton);
+  }
 
-  settings.cryptoList.forEach(id => {
-    const card = document.createElement('div');
-    card.className = 'card';
+  try {
+    const logos = await fetchCryptoLogos(settings.cryptoList);
+    const unit = settings.baseCurrency.toUpperCase();
 
-    const logoHtml = `<img src="${logos[id] || LOGO_PLACEHOLDER}" alt="${id}" class="crypto-logo">`;
+    cards.innerHTML = '';
+    
+    settings.cryptoList.forEach(id => {
+      const card = document.createElement('div');
+      card.className = 'card';
 
-    let currentPrice = null;
-    let changePerc = '';
-    let positive = null;
+      const logoHtml = `<img src="${logos[id] || LOGO_PLACEHOLDER}" alt="${id}" class="crypto-logo" onerror="this.src='${LOGO_PLACEHOLDER}'">`;
 
-    if (unit === 'IRR') {
-      const item = fiatData?.rates?.[id];
-      if (item) {
-        currentPrice = item.price;
-        changePerc = item.changePerc.toFixed(2) + '%';
-        positive = item.changePerc >= 0;
+      let currentPrice = null;
+      let changePerc = '';
+      let positive = null;
+
+      if (unit === 'IRR') {
+        const item = fiatData?.rates?.[id];
+        if (item && item.price > 0) {
+          currentPrice = item.price;
+          changePerc = item.changePerc.toFixed(2) + '%';
+          positive = item.changePerc >= 0;
+        } else {
+          currentPrice = null;
+          changePerc = '—';
+          positive = null;
+        }
+      } else {
+        currentPrice = cryptoData?.[id]?.[unit.toLowerCase()] ?? null;
+        const cgChange = cryptoData?.[id]?.[unit.toLowerCase() + '_24h_change'];
+        changePerc = cgChange != null ? cgChange.toFixed(2) + '%' : '—';
+        positive = cgChange != null ? cgChange >= 0 : null;
       }
-    } else {
-      currentPrice = cryptoData?.[id]?.[unit.toLowerCase()] ?? null;
-      const cgChange = cryptoData?.[id]?.[unit.toLowerCase() + '_24h_change'];
-      changePerc = cgChange != null ? cgChange.toFixed(2) + '%' : '';
-      positive = cgChange != null ? cgChange >= 0 : null;
-    }
 
-    const nameHtml = `<h2>${id.toUpperCase()} 
-                        <span class="price-change-inline ${positive === null ? '' : positive ? 'positive' : 'negative'}">
-                          ${changePerc}
-                        </span>
-                      </h2>`;
-    const priceHtml = `<p>${unit} : ${currentPrice != null ? currentPrice.toLocaleString() : '—'}</p>`;
+      const nameHtml = `<h2>${id.toUpperCase()} 
+                          <span class="price-change-inline ${positive === null ? '' : positive ? 'positive' : 'negative'}">
+                            ${changePerc}
+                          </span>
+                        </h2>`;
+      const priceHtml = `<p>${unit} : ${currentPrice != null ? currentPrice.toLocaleString() : '—'}</p>`;
 
-    card.innerHTML = `${logoHtml}<div>${nameHtml}${priceHtml}</div>`;
-    cards.appendChild(card);
-  });
+      card.innerHTML = `${logoHtml}<div>${nameHtml}${priceHtml}</div>`;
+      cards.appendChild(card);
+    });
 
-  document.getElementById('last-updated').textContent =
-    'آخرین بروزرسانی: ' + new Date(ts).toLocaleString('fa-IR');
+    document.getElementById('last-updated').textContent =
+      'آخرین بروزرسانی: ' + new Date(ts).toLocaleString('fa-IR');
+  } catch (error) {
+    console.error('Error rendering crypto cards:', error);
+    cards.innerHTML = '<div class="card"><p>خطا در بارگذاری داده‌ها</p></div>';
+    document.getElementById('last-updated').textContent = 'خطا در بروزرسانی';
+  }
 }
 
 async function renderWeatherCards(settings) {
@@ -419,28 +505,42 @@ async function loadAndRender() {
   // اعمال پس‌زمینه
   applyBackground(settings);
 
-  chrome.storage.local.get(['cachedData'], async ({ cachedData }) => {
-    if (useCache && cachedData) {
-      renderCryptoCards(cachedData.crypto, cachedData.fiat, cachedData.gold, settings, cachedData.ts);
-    } else {
-      try {
-        const [crypto, fiat, gold] = await Promise.all([
-          settings.baseCurrency !== 'IRR' ? fetchCrypto(settings.cryptoList, settings.baseCurrency) : null,
-          fetchFiatRates(settings.baseCurrency, settings.cryptoList),
-          fetchGoldPriceUSD(settings.goldApiKey)
-        ]);
+  try {
+    chrome.storage.local.get(['cachedData'], async ({ cachedData }) => {
+      if (useCache && cachedData) {
+        console.log('Using cached data');
+        renderCryptoCards(cachedData.crypto, cachedData.fiat, cachedData.gold, settings, cachedData.ts);
+      } else {
+        console.log('Fetching fresh data');
+        try {
+          const [crypto, fiat, gold] = await Promise.all([
+            settings.baseCurrency !== 'IRR' ? fetchCrypto(settings.cryptoList, settings.baseCurrency) : Promise.resolve({}),
+            fetchFiatRates(settings.baseCurrency, settings.cryptoList),
+            fetchGoldPriceUSD(settings.goldApiKey)
+          ]);
 
-        chrome.storage.local.set({
-          cachedData: { crypto: crypto || {}, fiat: fiat || { rates: {} }, gold: gold || {}, ts: Date.now() }
-        });
-        lastFetchTime = Date.now();
-        renderCryptoCards(crypto || {}, fiat || { rates: {} }, gold || {}, settings, Date.now());
-      } catch {
-        renderCryptoCards({}, {}, {}, settings, Date.now());
+          const newCachedData = { 
+            crypto: crypto || {}, 
+            fiat: fiat || { rates: {} }, 
+            gold: gold || {}, 
+            ts: Date.now() 
+          };
+          
+          chrome.storage.local.set({ cachedData: newCachedData });
+          lastFetchTime = Date.now();
+          renderCryptoCards(crypto || {}, fiat || { rates: {} }, gold || {}, settings, Date.now());
+        } catch (error) {
+          console.error('Error in loadAndRender:', error);
+          renderCryptoCards({}, { rates: {} }, {}, settings, Date.now());
+        }
       }
-    }
+      renderWeatherCards(settings);
+    });
+  } catch (error) {
+    console.error('Error loading data:', error);
+    renderCryptoCards({}, { rates: {} }, {}, settings, Date.now());
     renderWeatherCards(settings);
-  });
+  }
 }
 
 /* ======================== */
@@ -542,30 +642,36 @@ function setupRefresh() {
 }
 
 /* ======================== */
-/*      Auto Update         */
+/*      Manual Update       */
 /* ======================== */
 function setupUpdateUI() {
   const updateBtn = document.getElementById('updateBtn');
   
+  // همیشه دکمه رو نشون بده
+  updateBtn.classList.remove('hidden');
+  
   updateBtn.addEventListener('click', async () => {
     await checkAndShowUpdate();
   });
-  
-  // چک کردن آپدیت هر 6 ساعت
-  updateCheckInterval = setInterval(() => {
-    checkForUpdates(false);
-  }, 6 * 60 * 60 * 1000);
-  
-  // چک کردن اولیه هنگام لود
-  setTimeout(() => checkForUpdates(false), 5000);
 }
 
-async function checkForUpdates(silent = true) {
+// تابع چک کردن آپدیت
+async function checkForUpdates(silent = false) {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'checkForUpdates' });
+    showUpdateModal('🔍 در حال بررسی آپدیت...', 'info');
+    
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: 'checkForUpdates' }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(response);
+      });
+    });
     
     if (response.error) {
-      if (!silent) showUpdateError(response.error);
+      showUpdateError(response.error);
       return;
     }
     
@@ -573,24 +679,26 @@ async function checkForUpdates(silent = true) {
     
     if (updateInfo.isUpdateAvailable) {
       showUpdateAvailable(updateInfo);
-    } else if (!silent) {
-      showUpdateModal('✅ شما از آخرین نسخه استفاده می‌کنید.', 'info');
+    } else {
+      showUpdateModal('✅ شما از آخرین نسخه استفاده می‌کنید.', 'success');
     }
     
   } catch (error) {
-    if (!silent) showUpdateError('خطا در بررسی آپدیت');
+    console.error('Update check error:', error);
+    showUpdateError('خطا در بررسی آپدیت: ' + error.message);
   }
 }
 
+// نمایش موجود بودن آپدیت
 function showUpdateAvailable(updateInfo) {
   const updateBtn = document.getElementById('updateBtn');
-  updateBtn.classList.remove('hidden');
   updateBtn.classList.add('update-available');
   updateBtn.title = `آپدیت جدید ${updateInfo.latestVersion} موجود است`;
   
   showUpdateNotification(updateInfo);
 }
 
+// نوتیفیکیشن آپدیت
 function showUpdateNotification(updateInfo) {
   const notification = document.createElement('div');
   notification.className = 'update-notification';
@@ -624,13 +732,22 @@ function showUpdateNotification(updateInfo) {
   }, 30000);
 }
 
+// نصب آپدیت
 async function installUpdate(downloadUrl) {
   try {
     showUpdateModal('📥 در حال دانلود آپدیت...', 'info');
     
-    const response = await chrome.runtime.sendMessage({ 
-      action: 'applyUpdate', 
-      downloadUrl 
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ 
+        action: 'applyUpdate', 
+        downloadUrl 
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(response);
+      });
     });
     
     if (response.error) {
@@ -642,10 +759,12 @@ async function installUpdate(downloadUrl) {
       );
     }
   } catch (error) {
-    showUpdateError('خطا در نصب آپدیت');
+    console.error('Install update error:', error);
+    showUpdateError('خطا در نصب آپدیت: ' + error.message);
   }
 }
 
+// مدال آپدیت
 function showUpdateModal(message, type = 'info') {
   const modal = document.createElement('div');
   modal.className = `update-modal update-${type}`;
@@ -673,8 +792,8 @@ function showUpdateError(message) {
   showUpdateModal(`❌ ${message}`, 'error');
 }
 
+// چک و نمایش آپدیت
 async function checkAndShowUpdate() {
-  showUpdateModal('🔍 در حال بررسی آپدیت...', 'info');
   await checkForUpdates(false);
 }
 

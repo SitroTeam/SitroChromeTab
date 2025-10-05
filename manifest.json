@@ -1,21 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Sitro Chrome Tab",
+  "name": "Market New Tab",
   "description": "صفحه تب جدید با قیمت لحظه‌ای ارزها + جستجوی گوگل",
-  "version": "1.3.0",
-  "permissions": [
-    "storage",
-    "alarms",
-    "scripting",
-    "downloads"
-  ],
+  "version": "1.4.0",
+  "permissions": ["storage", "alarms", "scripting"],
   "host_permissions": [
     "https://api.coingecko.com/*",
     "https://api.exchangerate.host/*",
     "https://api.metals-api.com/*",
-    "https://api.bitpin.ir/*",
-    "https://api.github.com/*",
-    "https://api.weatherapi.com/*"
+    "https://api.bitpin.ir/*"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
@@ -29,6 +22,6 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Sitro Chrome Tab"
+    "default_title": "Market New Tab"
   }
 }

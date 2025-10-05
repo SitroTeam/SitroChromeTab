@@ -178,6 +178,7 @@ header button img {
 .card .crypto-logo {
   width: 30px;
   height: 30px;
+  border-radius: 50%;
 }
 
 .card div {
@@ -576,6 +577,12 @@ header button img {
 .update-btn.update-available {
   color: #ff6b6b !important;
   animation: pulse 2s infinite;
+  background: rgba(255, 107, 107, 0.1) !important;
+}
+
+.update-btn:not(.update-available):hover {
+  background: var(--accent-color) !important;
+  color: #000 !important;
 }
 
 @keyframes pulse {
