@@ -239,8 +239,8 @@ header button img {
 }
 
 .weather-card .weather-icon {
-  width: 40px;
-  height: 40px;
+  width: 70px;
+  height: 70px;
   flex-shrink: 0;
 }
 
@@ -249,6 +249,16 @@ header button img {
   flex-direction: column;
   justify-content: center;
   overflow: hidden;
+}
+
+.weather-info .condition {
+  font-size: 0.75rem;
+  color: #9aa6b2;
+  margin-top: 4px;
+}
+
+.weather-card[style*="opacity: 0.6"] {
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .weather-info .temp {

@@ -393,14 +393,52 @@ async function fetchGoldPriceUSD(apiKey) {
 }
 
 async function fetchWeatherData(city, apiKey) {
-  if (!apiKey || !city) return null;
-  try {
-    const res = await fetch(`${WEATHER_API}?key=${apiKey}&q=${encodeURIComponent(city)}&lang=fa`);
-    if (!res.ok) throw new Error('Failed to fetch weather data');
-    return await res.json();
-  } catch (error) {
-    console.error('Error fetching weather:', error);
+  if (!apiKey || !city) {
+    console.log('Weather API: Missing API key or city');
     return null;
+  }
+  
+  try {
+    console.log(`Weather API: Fetching data for ${city}`);
+    
+    // استفاده از WeatherAPI اصلی
+    const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(city)}&lang=fa`;
+    
+    console.log('Weather API URL:', url.replace(apiKey, '***')); // لاگ امن
+    
+    const res = await fetch(url);
+    
+    if (!res.ok) {
+      console.error(`Weather API error: ${res.status} ${res.statusText}`);
+      
+      // اگر خطای 401 (API Key نامعتبر) باشد
+      if (res.status === 401) {
+        throw new Error('API Key نامعتبر است');
+      }
+      
+      // اگر خطای 400 (شهر نامعتبر) باشد
+      if (res.status === 400) {
+        throw new Error('نام شهر نامعتبر است');
+      }
+      
+      return null;
+    }
+    
+    const data = await res.json();
+    console.log('Weather API response received for:', city);
+    return data;
+    
+  } catch (error) {
+    console.error('Error fetching weather from WeatherAPI:', error);
+    
+    // نمایش خطای دقیق‌تر
+    if (error.message.includes('API Key')) {
+      throw new Error('API Key آب‌وهوا نامعتبر است');
+    } else if (error.message.includes('شهر')) {
+      throw new Error(`شهر "${city}" یافت نشد`);
+    } else {
+      throw new Error('خطا در دریافت اطلاعات آب‌وهوا: ' + error.message);
+    }
   }
 }
 
@@ -475,21 +513,69 @@ async function renderCryptoCards(cryptoData, fiatData, goldData, settings, ts) {
 async function renderWeatherCards(settings) {
   const cards = document.getElementById('weather-cards');
   cards.innerHTML = '';
-  if (!settings.weatherApiKey || !settings.cities.length) return;
+  
+  if (!settings.weatherApiKey || !settings.cities.length) {
+    // نمایش راهنمای تنظیم API Key
+    const helpCard = document.createElement('div');
+    helpCard.className = 'weather-card';
+    helpCard.innerHTML = `
+      <div class="weather-info" style="text-align: center;">
+        <h2>🌤️ وضعیت آب‌وهوا</h2>
+        <p class="temp" style="color: var(--accent-color); margin: 8px 0;">
+          برای فعال‌سازی نیاز به API Key دارید
+        </p>
+        <p class="condition" style="font-size: 0.8rem; color: #9aa6b2;">
+          از <a href="https://www.weatherapi.com/signup.aspx" target="_blank" style="color: var(--accent-color); text-decoration: none;">WeatherAPI.com</a> کلید رایگان دریافت کنید
+        </p>
+      </div>
+    `;
+    helpCard.style.opacity = '0.8';
+    cards.appendChild(helpCard);
+    return;
+  }
 
+  console.log('Rendering weather cards for:', settings.cities);
+  
   for (const city of settings.cities) {
-    const data = await fetchWeatherData(city, settings.weatherApiKey);
     const card = document.createElement('div');
     card.className = 'weather-card';
-    if (data) {
+    
+    try {
+      const data = await fetchWeatherData(city, settings.weatherApiKey);
+      
+      if (data && data.current) {
+        card.innerHTML = `
+          <img src="https:${data.current.condition.icon}" 
+               alt="${data.current.condition.text}" 
+               class="weather-icon">
+          <div class="weather-info">
+            <h2>${data.location.name}</h2>
+            <p class="temp">${data.current.temp_c}°C</p>
+            <p class="condition">${data.current.condition.text}</p>
+          </div>
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="weather-info">
+            <h2>${city}</h2>
+            <p class="temp">—</p>
+            <p class="condition">داده‌ها در دسترس نیست</p>
+          </div>
+        `;
+        card.style.opacity = '0.6';
+      }
+    } catch (error) {
+      console.error(`Error rendering weather for ${city}:`, error);
       card.innerHTML = `
-        <img src="https:${data.current.condition.icon}" alt="${data.current.condition.text}">
-        <h2>${data.location.name}</h2>
-        <p>${data.current.temp_c}°C</p>
+        <div class="weather-info">
+          <h2>${city}</h2>
+          <p class="temp">—</p>
+          <p class="condition" style="color: var(--card-negative);">${error.message}</p>
+        </div>
       `;
-    } else {
-      card.innerHTML = `<h2>${city}</h2><p>—</p>`;
+      card.style.opacity = '0.6';
     }
+    
     cards.appendChild(card);
   }
 }
