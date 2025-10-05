@@ -1,0 +1,767 @@
+/* ======================== */
+/*      Variables           */
+/* ======================== */
+:root {
+  --bg-color: #0e1623;
+  --text-color: #e6eef6;
+  --accent-color: #ffd369;
+  --card-bg: rgba(255,255,255,0.08);
+  --card-positive: #4ade80;
+  --card-negative: #f87171;
+  --input-bg: rgba(255,255,255,0.1);
+}
+
+body.light {
+  --bg-color: #f5f5f5;
+  --text-color: #0e1623;
+  --accent-color: #ff9800;
+  --card-bg: rgba(0,0,0,0.05);
+  --card-positive: #16a34a;
+  --card-negative: #dc2626;
+  --input-bg: rgba(0,0,0,0.05);
+}
+
+/* ======================== */
+/*      Base Styles         */
+/* ======================== */
+body, html, input, select, textarea, button {
+  font-family: 'Vazir', sans-serif;
+  margin: 0;
+  padding: 0;
+  color: var(--text-color);
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: url('images/bg.jpg') no-repeat center center;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(8px);
+  z-index: -1;
+  transition: all 0.5s ease;
+}
+
+/* برای تضمین خوانایی متن روی پس‌زمینه */
+#app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 22, 35, 0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  border-radius: 12px;
+}
+
+/* ======================== */
+/*         Header           */
+/* ======================== */
+header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+header .logo {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--accent-color);
+}
+
+header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+}
+
+header .header-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+header button {
+  padding: 12px 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+  background: var(--input-bg);
+  color: var(--text-color);
+  display: flex;
+}
+
+header button:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
+header button svg {
+  width: 20px;
+  height: 20px;
+  fill: white;
+}
+
+header button img {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+#last-updated {
+  font-size: 0.85rem;
+  color: #9aa6b2;
+}
+
+.price-change-inline.positive { color: var(--card-positive); }
+.price-change-inline.negative { color: var(--card-negative); }
+
+/* ======================== */
+/*      Sidebar Cards       */
+/* ======================== */
+#crypto-cards, #weather-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 220px;
+  position: fixed;
+  top: 100px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  z-index: 2;
+  padding: 0 4px;
+}
+
+#crypto-cards { left: 20px; }
+#weather-cards { right: 20px; }
+
+/* ======================== */
+/*      Crypto Cards        */
+/* ======================== */
+.card {
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  background: var(--card-bg);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.card .crypto-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.card div {
+  display: flex;
+  flex-direction: column;
+}
+
+.card h2 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.card p {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+/* ======================== */
+/*     Skeleton Loader       */
+/* ======================== */
+.skeleton {
+  height: 50px;
+  background: var(--input-bg);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* ======================== */
+/*      Weather Cards        */
+/* ======================== */
+.weather-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-color);
+  min-width: 150px;
+  max-width: 200px;
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.weather-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.weather-card .weather-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.weather-card .weather-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.weather-info .temp {
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.weather-card h2 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.weather-card p {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+/* ======================== */
+/*      Main Content        */
+/* ======================== */
+#main-content {
+  margin-left: 260px;
+  margin-right: 260px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#googleLogo {
+  display: block;
+  margin: 0 auto 10px;
+  width: 120px;
+  height: auto;
+}
+
+#search-section {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#googleSearchForm {
+  display: flex;
+  width: 100%;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  height: 50px;
+}
+
+#googleSearchInput {
+  flex: 1;
+  padding: 0 16px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: var(--input-bg);
+  color: var(--text-color);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+#googleSearchInput::placeholder {
+  color: #9aa6b2;
+  line-height: normal;
+}
+
+#googleSearchForm button {
+  border: none;
+  padding: 0 16px;
+  background: var(--input-bg);
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#googleSearchForm button svg {
+  width: 25px;
+  height: 25px;
+  fill: gold;
+}
+
+#googleSearchForm button:hover { background: #ffb800; }
+
+/* ======================== */
+/*      Modal & Settings     */
+/* ======================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  z-index: 5;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal.hidden { display: none; }
+
+.modal-content {
+  background: var(--bg-color);
+  padding: 25px;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 95vw;
+  max-height: 85vh;
+  color: var(--text-color);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.7);
+  animation: fadeIn 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-right: -8px;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: var(--input-bg);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #ffb800;
+}
+
+.modal-content h3 { 
+  margin-top: 0; 
+  margin-bottom: 20px;
+  color: var(--accent-color); 
+  text-align: center;
+  font-size: 1.3rem;
+}
+
+.modal-content label { 
+  display: block; 
+  margin: 15px 0 6px; 
+  color: #9aa6b2; 
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.modal-content input, 
+.modal-content select {
+  width: 100%;
+  padding: 12px;
+  height: 44px;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: none;
+  background: var(--input-bg);
+  color: var(--text-color);
+  outline: none;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+  box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.modal-content input::placeholder {
+  color: #9aa6b2;
+  font-size: 0.85rem;
+}
+
+.modal-content select option {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  padding: 10px;
+}
+
+.background-section {
+  margin-top: 15px;
+  padding: 15px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.preview-container {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  text-align: center;
+  border: 1px dashed rgba(255,255,255,0.2);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 2px solid var(--accent-color);
+}
+
+.color-preview-box {
+  width: 100%;
+  height: 60px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 2px solid var(--accent-color);
+}
+
+.preview-text {
+  font-size: 0.8rem;
+  color: #9aa6b2;
+}
+
+#testBackgroundUrl {
+  margin-top: 10px;
+  padding: 10px 16px;
+  background: var(--accent-color);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  width: 100%;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+#testBackgroundUrl:hover {
+  background: #ffb800;
+  transform: translateY(-1px);
+}
+
+#backgroundUpload {
+  width: 100%;
+  padding: 10px;
+  background: var(--input-bg);
+  border-radius: 8px;
+  color: var(--text-color);
+  border: 1px dashed rgba(255,255,255,0.3);
+  transition: all 0.3s ease;
+}
+
+#backgroundUpload:hover {
+  border-color: var(--accent-color);
+}
+
+#backgroundColor {
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.modal-actions button {
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  background: var(--accent-color);
+  color: #000;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.modal-actions button:hover { 
+  background: #ffb800; 
+  transform: translateY(-1px);
+}
+
+.modal-actions button:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ======================== */
+/*      Update Styles       */
+/* ======================== */
+.update-btn {
+  position: relative;
+}
+
+.update-btn.update-available {
+  color: #ff6b6b !important;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.update-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  border: 2px solid var(--accent-color);
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+  width: 90%;
+}
+
+.update-notification-content h4 {
+  margin: 0 0 10px 0;
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+.update-notes {
+  font-size: 0.85rem;
+  color: #9aa6b2;
+  margin: 10px 0;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  flex: 1;
+}
+
+.btn-secondary {
+  background: var(--input-bg);
+  color: var(--text-color);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.update-modal {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 15px 20px;
+  z-index: 1001;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  min-width: 300px;
+  text-align: center;
+}
+
+.update-modal.update-success {
+  border-left: 4px solid var(--card-positive);
+}
+
+.update-modal.update-error {
+  border-left: 4px solid var(--card-negative);
+}
+
+.update-modal.update-info {
+  border-left: 4px solid var(--accent-color);
+}
+
+.update-modal-content p {
+  margin: 0 0 15px 0;
+}
+
+.close-update-modal {
+  background: var(--accent-color);
+  color: #000;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* ======================== */
+/*      Responsive          */
+/* ======================== */
+@media (max-width: 768px) {
+  #crypto-cards, #weather-cards {
+    position: relative;
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    max-height: none;
+    margin-top: 20px;
+    left: 0;
+    right: 0;
+  }
+
+  #main-content { margin-left: 0; margin-right: 0; }
+
+  .card, .weather-card {
+    min-width: 120px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .weather-card { justify-content: center; }
+
+  #search-section {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    margin: 20px auto;
+  }
+  
+  .modal {
+    padding: 10px;
+    align-items: flex-start;
+  }
+  
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90vh;
+    margin-top: 20px;
+    padding: 20px;
+  }
+  
+  .modal-body {
+    padding-right: 4px;
+    margin-right: -4px;
+  }
+
+  .update-notification {
+    width: 95%;
+    left: 2.5%;
+    transform: none;
+  }
+  
+  .update-actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 15px;
+    border-radius: 12px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal-actions button {
+    width: 100%;
+  }
+  
+  .background-section {
+    padding: 12px;
+    margin-top: 12px;
+  }
+}
