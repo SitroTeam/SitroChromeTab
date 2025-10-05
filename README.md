@@ -196,7 +196,7 @@ console.log('Debug info');
 
 ## 👥 توسعه‌دهندگان
 
-- **You** - توسعه اصلی - [GitHub](https://github.com/SitroTeam)
+- **Faraz** - توسعه اصلی - [GitHub](https://github.com/SitroTeam)
 
 ## 🙏 تشکر
 
