@@ -732,6 +732,33 @@ function showUpdateNotification(updateInfo) {
   }, 30000);
 }
 
+// تابع جدید برای نمایش modal action
+function showActionModal(title, message, onConfirm) {
+  const modal = document.createElement('div');
+  modal.className = 'update-modal update-info';
+  modal.innerHTML = `
+    <div class="update-modal-content">
+      <h4>${title}</h4>
+      <p>${message}</p>
+      <div class="update-actions">
+        <button id="confirmAction" class="btn-primary">بله</button>
+        <button id="cancelAction" class="btn-secondary">خیر</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('confirmAction').addEventListener('click', () => {
+    modal.remove();
+    onConfirm();
+  });
+  
+  document.getElementById('cancelAction').addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
 // نصب آپدیت
 async function installUpdate(downloadUrl) {
   try {
@@ -754,9 +781,20 @@ async function installUpdate(downloadUrl) {
       showUpdateError(response.error);
     } else {
       showUpdateModal(
-        '✅ آپدیت با موفقیت دانلود شد. لطفاً افزونه را ری‌لود کنید.',
+        `✅ ${response.message || 'آپدیت با موفقیت دانلود شد. لطفاً فایل را از پوشه دانلودها نصب کنید.'}`,
         'success'
       );
+      
+      // جایگزین confirm با یک دکمه action
+      setTimeout(() => {
+        showActionModal(
+          'باز کردن پوشه دانلودها',
+          'آیا می‌خواهید پوشه دانلودها را باز کنید؟',
+          () => {
+            chrome.downloads.showDefaultFolder();
+          }
+        );
+      }, 2000);
     }
   } catch (error) {
     console.error('Install update error:', error);

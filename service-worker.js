@@ -4,7 +4,7 @@ const PERIOD_MINUTES = 5;
 // آدرس ریپازیتوری خود را اینجا قرار دهید
 const GITHUB_API = 'https://api.github.com/repos/SitroTeam/SitroChromeTab/releases/latest';
 
-// نگاشت رمزارزها به نماد بیت‌پین (ساده‌شده)
+// نگاشت رمزارزها به نماد بیت‌پین
 const BITPIN_SYMBOLS = {
   bitcoin: "BTC_IRT",
   ethereum: "ETH_IRT",
@@ -144,10 +144,14 @@ const BITPIN_SYMBOLS = {
 // ============================
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('bgFetch', { periodInMinutes: PERIOD_MINUTES });
+  console.log('Service Worker installed and alarms created');
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'bgFetch') updateBackgroundData();
+  if (alarm.name === 'bgFetch') {
+    console.log('Background fetch alarm triggered');
+    updateBackgroundData();
+  }
 });
 
 // ============================
@@ -156,13 +160,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 async function updateBackgroundData() {
   chrome.storage.local.get(['settings'], async ({ settings }) => {
     settings = settings || { cryptoList: ['bitcoin'], baseCurrency: 'USD' };
+    console.log('Updating background data for:', settings.cryptoList, 'in', settings.baseCurrency);
 
     try {
       // رمزارزها
       let crypto = {};
       if (settings.baseCurrency !== 'IRR') {
         const res = await fetch(`${COINGECKO_SIMPLE_PRICE}?ids=${settings.cryptoList.join(',')}&vs_currencies=${settings.baseCurrency.toLowerCase()}&include_24hr_change=true`);
-        if (res.ok) crypto = await res.json();
+        if (res.ok) {
+          crypto = await res.json();
+          console.log('Crypto data fetched:', crypto);
+        }
       }
 
       // نرخ ارز یا ریال
@@ -171,13 +179,17 @@ async function updateBackgroundData() {
         fiat = await fetchBitpinTickerRates(settings.cryptoList);
       } else {
         const res = await fetch(`${EXCHANGE_RATE}?base=${settings.baseCurrency.toUpperCase()}`);
-        if (res.ok) fiat = await res.json();
+        if (res.ok) {
+          fiat = await res.json();
+          console.log('Fiat data fetched:', fiat);
+        }
       }
 
       // ذخیره در کش
       chrome.storage.local.set({
         cachedData: { crypto, fiat, ts: Date.now() }
       });
+      console.log('Data cached successfully');
 
     } catch (e) {
       console.error('bgFetch error', e);
@@ -189,13 +201,17 @@ async function updateBackgroundData() {
 //  هندل پیام‌ها از newtab.js
 // ============================
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  console.log('Message received in service worker:', msg.action);
+
   // هندل درخواست fetchBitpinTicker
   if (msg.action === 'fetchBitpinTicker') {
     fetchBitpinTickerRates(msg.cryptoList)
       .then(data => {
+        console.log('Bitpin data fetched successfully');
         sendResponse({ data });
       })
       .catch(err => {
+        console.error('Bitpin fetch error:', err);
         sendResponse({ error: err.message });
       });
     return true;
@@ -205,9 +221,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'checkForUpdates') {
     checkForUpdates()
       .then(updateInfo => {
+        console.log('Update check completed:', updateInfo);
         sendResponse({ updateInfo });
       })
       .catch(error => {
+        console.error('Update check error:', error);
         sendResponse({ error: error.message });
       });
     return true;
@@ -217,9 +235,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'applyUpdate') {
     applyUpdate(msg.downloadUrl)
       .then(result => {
+        console.log('Update applied successfully:', result);
         sendResponse({ result });
       })
       .catch(error => {
+        console.error('Update application error:', error);
         sendResponse({ error: error.message });
       });
     return true;
@@ -231,7 +251,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ============================
 async function fetchBitpinTickerRates(cryptoList = []) {
   try {
-    console.log('Fetching from Bitpin API...');
+    console.log('Fetching Bitpin data for:', cryptoList);
     const resp = await fetch('https://api.bitpin.ir/api/v1/mkt/tickers/');
     
     if (!resp.ok) {
@@ -239,14 +259,14 @@ async function fetchBitpinTickerRates(cryptoList = []) {
     }
     
     const data = await resp.json();
-    console.log('Bitpin API response:', data);
+    console.log('Bitpin API raw response:', data);
     
     const tickers = data.results || data || [];
     const rates = {};
 
     cryptoList.forEach(id => {
       const symbol = BITPIN_SYMBOLS[id.toLowerCase()];
-      console.log(`Looking for ${id} with symbol: ${symbol}`);
+      console.log(`Searching for ${id} with symbol: ${symbol}`);
       
       if (symbol) {
         const ticker = tickers.find(t => t.symbol === symbol);
@@ -254,28 +274,35 @@ async function fetchBitpinTickerRates(cryptoList = []) {
           console.log(`Found ticker for ${id}:`, ticker);
           
           const price = parseFloat(ticker.price) || 0;
-          // استفاده از daily_change_price برای درصد تغییر
-          const changePercent = parseFloat(ticker.daily_change_price) || 
-                               parseFloat(ticker.change) || 
-                               parseFloat(ticker.price_change_percent) || 0;
+          const changePercent = parseFloat(ticker.daily_change_price) || 0;
           
           rates[id.toLowerCase()] = {
             price: price,
             changePerc: changePercent
           };
           
-          console.log(`Price: ${price}, Change: ${changePercent}%`);
+          console.log(`Processed ${id}: ${price} IRR, ${changePercent}% change`);
         } else {
           console.log(`Ticker not found for ${id} with symbol ${symbol}`);
+          // استفاده از فال‌بک فوری
+          rates[id.toLowerCase()] = {
+            price: 0,
+            changePerc: 0
+          };
         }
+      } else {
+        console.log(`No symbol mapping for ${id}`);
+        rates[id.toLowerCase()] = {
+          price: 0,
+          changePerc: 0
+        };
       }
     });
 
-    console.log('Final rates:', rates);
+    console.log('Final IRR rates:', rates);
     return { base: 'IRR', rates, ts: Date.now() };
   } catch (error) {
     console.error('Bitpin fetch error:', error);
-    // فال‌بک: استفاده از CoinGecko با نرخ تقریبی
     return await fetchIRRFromCoinGecko(cryptoList);
   }
 }
@@ -283,7 +310,8 @@ async function fetchBitpinTickerRates(cryptoList = []) {
 // فال‌بک برای زمانی که Bitpin کار نمی‌کند
 async function fetchIRRFromCoinGecko(cryptoList) {
   try {
-    const res = await fetch(`${COINGECKO_SIMPLE_PRICE}?ids=${cryptoList.join(',')}&vs_currencies=usd&include_24hr_change=true`);
+    console.log('Using CoinGecko fallback for IRR');
+    const res = await fetch(`${COINGECKO_API}?ids=${cryptoList.join(',')}&vs_currencies=usd&include_24hr_change=true`);
     if (!res.ok) throw new Error('CoinGecko failed');
     
     const cryptoData = await res.json();
@@ -297,13 +325,27 @@ async function fetchIRRFromCoinGecko(cryptoList) {
           price: Math.round(usdPrice * usdToIrr),
           changePerc: cryptoData[id]?.usd_24h_change || 0
         };
+      } else {
+        rates[id.toLowerCase()] = {
+          price: 0,
+          changePerc: 0
+        };
       }
     });
 
+    console.log('CoinGecko fallback rates:', rates);
     return { base: 'IRR', rates, ts: Date.now() };
   } catch (error) {
     console.error('CoinGecko fallback also failed:', error);
-    return { base: 'IRR', rates: {}, ts: Date.now() };
+    // ایجاد داده‌های نمونه برای جلوگیری از خطا
+    const sampleRates = {};
+    cryptoList.forEach(id => {
+      sampleRates[id.toLowerCase()] = {
+        price: 0,
+        changePerc: 0
+      };
+    });
+    return { base: 'IRR', rates: sampleRates, ts: Date.now() };
   }
 }
 
@@ -314,19 +356,22 @@ async function fetchIRRFromCoinGecko(cryptoList) {
 // تابع چک کردن آپدیت
 async function checkForUpdates() {
   try {
-    // غیرفعال کردن موقت سیستم آپدیت
-    const currentVersion = chrome.runtime.getManifest().version;
+    console.log('Checking for updates...');
     
-    return {
-      currentVersion,
-      latestVersion: currentVersion,
-      isUpdateAvailable: false,
-      releaseNotes: 'سیستم آپدیت موقتاً غیرفعال است',
-      downloadUrl: '',
-      publishedAt: new Date().toISOString()
-    };
-    
-    /* کد قدیمی - کامنت شده
+    // اگر آدرس گیتهاب تنظیم نشده، غیرفعال باش
+    if (!GITHUB_API || GITHUB_API.includes('YOUR_USERNAME')) {
+      console.log('GitHub API not configured');
+      const currentVersion = chrome.runtime.getManifest().version;
+      return {
+        currentVersion,
+        latestVersion: currentVersion,
+        isUpdateAvailable: false,
+        releaseNotes: 'لطفاً آدرس ریپازیتوری را در تنظیمات تنظیم کنید',
+        downloadUrl: '',
+        publishedAt: new Date().toISOString()
+      };
+    }
+
     const response = await fetch(GITHUB_API, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
@@ -334,8 +379,12 @@ async function checkForUpdates() {
       }
     });
     
+    if (response.status === 404) {
+      throw new Error('ریپازیتوری پیدا نشد. لطفاً آدرس ریپازیتوری را بررسی کنید.');
+    }
+    
     if (!response.ok) {
-      throw new Error(`GitHub API failed with status: ${response.status}`);
+      throw new Error(`خطا در ارتباط با گیتهاب: ${response.status}`);
     }
     
     const latestRelease = await response.json();
@@ -344,24 +393,44 @@ async function checkForUpdates() {
     
     const isUpdateAvailable = compareVersions(latestVersion, currentVersion) > 0;
     
+    // پیدا کردن لینک دانلود
+    let downloadUrl = '';
+    if (latestRelease.assets && latestRelease.assets.length > 0) {
+      // پیدا کردن فایل zip
+      const zipAsset = latestRelease.assets.find(asset => 
+        asset.name.includes('.zip') || asset.name.includes('market-newtab')
+      );
+      downloadUrl = zipAsset ? zipAsset.browser_download_url : latestRelease.assets[0].browser_download_url;
+    } else {
+      // اگر فایل آپلود شده نیست، از source code استفاده کن
+      downloadUrl = latestRelease.zipball_url;
+    }
+    
+    console.log('Update check result:', {
+      currentVersion,
+      latestVersion,
+      isUpdateAvailable,
+      downloadUrl
+    });
+    
     return {
       currentVersion,
       latestVersion,
       isUpdateAvailable,
-      releaseNotes: latestRelease.body || 'No release notes available',
-      downloadUrl: latestRelease.assets[0]?.browser_download_url || latestRelease.html_url,
+      releaseNotes: latestRelease.body || 'بهبود عملکرد و رفع باگ',
+      downloadUrl: downloadUrl,
       publishedAt: latestRelease.published_at || new Date().toISOString()
     };
-    */
   } catch (error) {
     console.error('Update check failed:', error);
+    
     // بازگشت به حالت عادی بدون خطا
     const currentVersion = chrome.runtime.getManifest().version;
     return {
       currentVersion,
       latestVersion: currentVersion,
       isUpdateAvailable: false,
-      releaseNotes: 'بررسی آپدیت در حال حاضر در دسترس نیست',
+      releaseNotes: 'بررسی آپدیت موقتاً در دسترس نیست: ' + error.message,
       downloadUrl: '',
       publishedAt: new Date().toISOString()
     };
@@ -389,47 +458,105 @@ function compareVersions(versionA, versionB) {
   }
 }
 
-// تابع اعمال آپدیت
+// تابع اعمال آپدیت واقعی
 async function applyUpdate(downloadUrl) {
   try {
-    // برای گیتهاب، کاربر را به صفحه release هدایت می‌کنیم
-    if (downloadUrl.includes('github.com')) {
-      chrome.tabs.create({ url: downloadUrl });
-      return { success: true, message: 'Redirected to GitHub releases' };
+    if (!downloadUrl) {
+      throw new Error('لینک دانلود موجود نیست');
     }
 
-    const downloadId = await chrome.downloads.download({
-      url: downloadUrl,
-      filename: 'market-newtab-update.zip'
-    });
+    console.log('Applying update with URL:', downloadUrl);
+
+    // ریدایرکت مستقیم به صفحه releases
+    let releaseUrl = '';
     
-    return new Promise((resolve, reject) => {
-      const cleanup = () => {
-        chrome.downloads.onChanged.removeListener(onChanged);
-      };
+    if (downloadUrl.includes('api.github.com/repos')) {
+      // تبدیل لینک API به لینک معمولی گیتهاب
+      releaseUrl = downloadUrl
+        .replace('api.github.com/repos', 'github.com')
+        .replace('/releases/latest', '/releases/')
+        .replace('/zipball/', '/releases/')
+        .replace('/tarball/', '/releases/');
+    } else if (downloadUrl.includes('github.com')) {
+      // اگر لینک مستقیم گیتهاب است
+      releaseUrl = downloadUrl;
+    } else {
+      // برای لینک‌های مستقیم دانلود
+      releaseUrl = downloadUrl;
+    }
 
-      function onChanged(delta) {
-        if (delta.id === downloadId && delta.state && delta.state.current === 'complete') {
-          cleanup();
-          resolve({ success: true, downloadId });
-        }
-        
-        if (delta.id === downloadId && delta.error && delta.error.current) {
-          cleanup();
-          reject(new Error(`Download failed: ${delta.error.current}`));
-        }
-      }
-
-      chrome.downloads.onChanged.addListener(onChanged);
-      
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        cleanup();
-        reject(new Error('Download timeout'));
-      }, 30000);
-    });
+    // حذف پارامترهای اضافی
+    releaseUrl = releaseUrl.split('?')[0];
+    
+    console.log('Redirecting to:', releaseUrl);
+    
+    // باز کردن تب جدید
+    chrome.tabs.create({ url: releaseUrl });
+    
+    return { 
+      success: true, 
+      message: 'به صفحه انتشار هدایت شدید. لطفاً آخرین نسخه را دانلود و نصب کنید.',
+      releaseUrl: releaseUrl
+    };
+    
   } catch (error) {
     console.error('Update application failed:', error);
     throw error;
   }
 }
+
+// تابع برای تست API (اختیاری)
+async function testBitpinAPI() {
+  try {
+    console.log('Testing Bitpin API...');
+    const resp = await fetch('https://api.bitpin.ir/api/v1/mkt/tickers/');
+    const data = await resp.json();
+    
+    if (data.results && data.results.length > 0) {
+      console.log('Bitpin API Test - First Ticker:', data.results[0]);
+      console.log('Available symbols:', data.results.slice(0, 5).map(t => t.symbol));
+    } else {
+      console.log('Bitpin API Test - No results found');
+    }
+  } catch (error) {
+    console.error('Bitpin API Test Failed:', error);
+  }
+}
+
+// تابع برای تست آپدیت (اختیاری)
+async function testUpdateSystem() {
+  try {
+    console.log('Testing update system...');
+    const updateInfo = await checkForUpdates();
+    console.log('Update test result:', updateInfo);
+  } catch (error) {
+    console.error('Update test failed:', error);
+  }
+}
+
+// اجرای تست هنگام لود (اختیاری)
+// testBitpinAPI();
+// testUpdateSystem();
+
+// هندل نصب و آپدیت
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    console.log('Extension installed for the first time');
+    // مقداردهی اولیه
+    chrome.storage.local.set({
+      settings: {
+        baseCurrency: 'USD',
+        cryptoList: ['bitcoin', 'ethereum', 'tether'],
+        goldApiKey: '',
+        weatherApiKey: '',
+        cities: ['Tehran'],
+        background: {
+          type: 'default',
+          data: null
+        }
+      }
+    });
+  } else if (details.reason === 'update') {
+    console.log('Extension updated from', details.previousVersion, 'to', chrome.runtime.getManifest().version);
+  }
+});

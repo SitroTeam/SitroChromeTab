@@ -689,6 +689,20 @@ header button img {
   font-weight: 700;
 }
 
+/* استایل برای modal action */
+.update-modal h4 {
+  margin: 0 0 10px 0;
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+.update-modal .update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: center;
+}
+
 /* ======================== */
 /*      Responsive          */
 /* ======================== */
