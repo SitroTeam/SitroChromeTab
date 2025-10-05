@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Market New Tab",
   "description": "صفحه تب جدید با قیمت لحظه‌ای ارزها + جستجوی گوگل",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "permissions": ["storage", "alarms", "scripting"],
   "host_permissions": [
     "https://api.coingecko.com/*",
