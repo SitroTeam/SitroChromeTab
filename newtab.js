@@ -591,6 +591,9 @@ async function loadAndRender() {
   // اعمال پس‌زمینه
   applyBackground(settings);
 
+  // نمایش عنوان جدید
+  document.querySelector('header h1').textContent = 'شرکت برنامه‌نویسی حرفه‌ای';
+
   try {
     chrome.storage.local.get(['cachedData'], async ({ cachedData }) => {
       if (useCache && cachedData) {

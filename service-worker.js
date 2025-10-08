@@ -20,7 +20,7 @@ const BITPIN_SYMBOLS = {
   litecoin: "LTC_IRT",
   shiba: "SHIB_IRT",
   avalanche: "AVAX_IRT",
-  polygon: "MATIC_IRT",
+  polygon: "POL_IRT",
   vechain: "VET_IRT",
   monero: "XMR_IRT",
   stellar: "XLM_IRT",
@@ -137,6 +137,7 @@ const BITPIN_SYMBOLS = {
   arbitrum: "ARB_IRT",
   optimism: "OP_IRT",
   zkSync: "ZKS_IRT",
+  notcoin: "NOT_IRT",
 };
 
 // ============================

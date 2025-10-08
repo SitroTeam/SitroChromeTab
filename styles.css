@@ -79,10 +79,22 @@ header {
   gap: 6px;
 }
 
+/* اضافه کردن استایل برای لوگو شرکت */
+.company-logo {
+  width: 134.5px;
+  height: 32px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 header .logo {
   font-weight: 800;
   font-size: 1.5rem;
   color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 header h1 {
@@ -90,6 +102,7 @@ header h1 {
   font-weight: 700;
   color: var(--text-color);
   margin: 0;
+  margin-top: 4px;
 }
 
 header .header-controls {
@@ -153,6 +166,44 @@ header button img {
 #crypto-cards { left: 20px; }
 #weather-cards { right: 20px; }
 
+/* استایل اسکرول بار برای کارت‌های آب‌وهوا */
+#weather-cards::-webkit-scrollbar {
+  width: 6px;
+}
+
+#weather-cards::-webkit-scrollbar-track {
+  background: var(--input-bg);
+  border-radius: 3px;
+}
+
+#weather-cards::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 3px;
+}
+
+#weather-cards::-webkit-scrollbar-thumb:hover {
+  background: #ffb800;
+}
+
+/* استایل اسکرول بار برای کارت‌های رمزارز */
+#crypto-cards::-webkit-scrollbar {
+  width: 6px;
+}
+
+#crypto-cards::-webkit-scrollbar-track {
+  background: var(--input-bg);
+  border-radius: 3px;
+}
+
+#crypto-cards::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 3px;
+}
+
+#crypto-cards::-webkit-scrollbar-thumb:hover {
+  background: #ffb800;
+}
+
 /* ======================== */
 /*      Crypto Cards        */
 /* ======================== */
@@ -168,6 +219,8 @@ header button img {
   justify-content: space-between;
   gap: 8px;
   transition: transform 0.3s, box-shadow 0.3s;
+  min-height: 50px;
+  flex-shrink: 0;
 }
 
 .card:hover {
@@ -205,6 +258,7 @@ header button img {
   border-radius: 12px;
   margin-bottom: 10px;
   animation: pulse 1.5s infinite;
+  flex-shrink: 0;
 }
 
 @keyframes pulse {
@@ -227,10 +281,12 @@ header button img {
   color: var(--text-color);
   min-width: 150px;
   max-width: 200px;
+  min-height: 50px;
   overflow: hidden;
   text-align: left;
   box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   transition: transform 0.3s, box-shadow 0.3s;
+  flex-shrink: 0;
 }
 
 .weather-card:hover {
@@ -249,12 +305,17 @@ header button img {
   flex-direction: column;
   justify-content: center;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .weather-info .condition {
   font-size: 0.75rem;
   color: #9aa6b2;
   margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weather-card[style*="opacity: 0.6"] {
@@ -264,11 +325,15 @@ header button img {
 .weather-info .temp {
   font-weight: 700;
   color: var(--accent-color);
+  font-size: 1rem;
 }
 
 .weather-card h2 {
   font-size: 0.95rem;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weather-card p {
@@ -290,7 +355,7 @@ header button img {
 
 #googleLogo {
   display: block;
-  margin: 0 auto 10px;
+  margin: 10px auto 10px;
   width: 120px;
   height: auto;
 }
@@ -347,6 +412,12 @@ header button img {
   width: 25px;
   height: 25px;
   fill: gold;
+}
+
+#googleSearchForm button:hover svg {
+  width: 25px;
+  height: 25px;
+  fill: black;
 }
 
 #googleSearchForm button:hover { background: #ffb800; }
@@ -722,22 +793,49 @@ header button img {
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     max-height: none;
     margin-top: 20px;
     left: 0;
     right: 0;
+    padding: 10px;
   }
 
-  #main-content { margin-left: 0; margin-right: 0; }
+  #crypto-cards::-webkit-scrollbar,
+  #weather-cards::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  #crypto-cards::-webkit-scrollbar-track,
+  #weather-cards::-webkit-scrollbar-track {
+    background: var(--input-bg);
+    border-radius: 3px;
+  }
+
+  #crypto-cards::-webkit-scrollbar-thumb,
+  #weather-cards::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 3px;
+  }
+
+  #main-content { 
+    margin-left: 0; 
+    margin-right: 0; 
+    padding: 10px;
+  }
 
   .card, .weather-card {
     min-width: 120px;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    flex-shrink: 0;
   }
 
-  .weather-card { justify-content: center; }
+  .weather-card { 
+    justify-content: center; 
+    min-height: 120px;
+  }
 
   #search-section {
     position: relative;
@@ -794,5 +892,23 @@ header button img {
   .background-section {
     padding: 12px;
     margin-top: 12px;
+  }
+
+  .weather-card {
+    min-width: 140px;
+    padding: 8px;
+  }
+
+  .weather-card .weather-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .weather-card h2 {
+    font-size: 0.85rem;
+  }
+
+  .weather-info .temp {
+    font-size: 0.9rem;
   }
 }
